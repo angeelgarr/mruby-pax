@@ -75,29 +75,36 @@ class PAX
     def self.open
       if self.allow?
         self._open
+        Semaphore.current.add(self)
         self.thread_new
       end
     end
 
     def self.thread_new
       self.printer_control = PrinterControl.new
-      self.thread = Thread.new(self.printer_control) do |printer|
-        loop do
-          if printer.flag_print
-            printer.flag_print = false
-            timeout = Time.now + 4
-            usleep 700_000
-            loop do
-              if ! printer.flag_print || timeout < Time.now
-                break
-              else
-                printer.flag_print = false
-                usleep 400_000
+      self.thread = Thread.new(self.printer_control, Semaphore.current) do |printer, sem|
+        begin
+          while true
+            break if sem.kill?
+            if printer.flag_print
+              printer.flag_print = false
+              timeout = Time.now + 4
+              usleep 700_000
+              loop do
+                if ! printer.flag_print || timeout < Time.now
+                  break
+                else
+                  printer.flag_print = false
+                  usleep 400_000
+                end
               end
+              printer.print
+              PAX::Printer.font("AerialMono.ttf")
             end
-            printer.print
-            PAX::Printer.font("AerialMono.ttf")
           end
+          0
+        rescue
+          -2
         end
       end
     end
@@ -105,8 +112,13 @@ class PAX
     def self.thread_print
       self.printer_control.flag_print = true
       unless self.thread.alive?
+        thread_kill
         thread_new
       end
+    end
+
+    def self.thread_kill
+      Semaphore.current.kill
     end
 
     # @brief Restore the printer default settings and clear the print buffer data.
