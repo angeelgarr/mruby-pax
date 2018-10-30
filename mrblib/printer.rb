@@ -83,6 +83,7 @@ class PAX
       self.printer_control = PrinterControl.new
       self.thread = Thread.new(self.printer_control) do |printer|
         loop do
+          usleep 700_000
           if printer.kill
             if printer.flag_print
               printer.print
@@ -93,7 +94,6 @@ class PAX
           if printer.flag_print
             printer.flag_print = false
             timeout = Time.now + 4
-            usleep 700_000
             loop do
               if ! printer.flag_print || timeout < Time.now
                 break
@@ -291,4 +291,3 @@ class PAX
     end
   end
 end
-
