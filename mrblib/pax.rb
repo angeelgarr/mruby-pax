@@ -1,3 +1,10 @@
+module Kernel
+
+  def send(*args, &block)
+    __send__(*args, &block)
+  end
+end
+
 class PAX
   Network = ::Network
 
